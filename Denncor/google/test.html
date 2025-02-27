@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="test.css" />
+    <title>Google Sign-In</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  </head>
+  <body>
+    <h2 id="heading" align="center">Sign in with Google</h2>
+
+    <!-- Google Sign-In Button -->
+    <div
+      id="g_id_onload"
+      data-client_id="YOUR_GOOGLE_CLIENT_ID"
+      data-callback="handleCredentialResponse"
+    ></div>
+
+    <div class="g_id_signin" data-type="standard"></div>
+
+    <script>
+      function handleCredentialResponse(response) {
+        console.log("ID Token:", response.credential);
+
+        // Decode JWT (for display purposes)
+        const userInfo = JSON.parse(atob(response.credential.split(".")[1]));
+        console.log("User Info:", userInfo);
+
+        // Display user info
+        document.body.innerHTML += `<h3>Welcome, ${userInfo.name}!</h3>
+                                        <img src="${userInfo.picture}" alt="Profile Picture"/>`;
+      }
+    </script>
+  </body>
+</html>
