@@ -1,42 +1,90 @@
-#root {
-  max-width: 1280px;
+/* App.css */
+
+/* Main App container */
+.App {
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 20px;
+}
+
+/* Headings */
+.App h1 {
+  font-size: 2rem;
+  margin-bottom: 20px;
+  color: #1a1a1a;
   text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* UploadZone styles */
+.upload-zone {
+  border: 2px dashed #0077cc;
+  padding: 40px;
+  margin-bottom: 20px;
+  text-align: center;
+  color: #555;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.upload-zone:hover {
+  background-color: #e6f0ff;
+  border-color: #005fa3;
 }
 
-.card {
-  padding: 2em;
+/* Canvas container */
+.canvas-container {
+  border: 1px solid #ccc;
+  background-color: #fff;
+  position: relative;
+  margin-bottom: 20px;
 }
 
-.read-the-docs {
-  color: #888;
+/* MeasurementControls container */
+.measurement-controls {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Buttons */
+button {
+  background-color: #0077cc;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background-color 0.2s;
+}
+
+button:hover {
+  background-color: #005fa3;
+}
+
+/* Input fields */
+input[type="number"] {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+/* Measurements list */
+.measurements-list {
+  background-color: #fff;
+  border: 1px solid #ccc;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.measurements-list ul {
+  list-style: none;
+}
+
+.measurements-list li {
+  margin-bottom: 8px;
+  font-weight: 500;
 }

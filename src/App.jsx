@@ -4,6 +4,8 @@ import UploadZone from './components/UploadZone';
 import MeasurementControls from './components/MeasurementControls';
 import './App.css';
 
+console.log('PyraGen App loaded ✅');
+
 function App() {
   const [image, setImage] = useState(null);          // Floor plan image
   const [scaleFactor, setScaleFactor] = useState(0); // mm per pixel
