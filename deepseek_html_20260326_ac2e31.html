@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PyraGen - Floor Plan Measurement Tool</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none; /* avoid accidental text selection while panning */
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            padding: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* main app card */
+        .app-container {
+            max-width: 1400px;
+            width: 100%;
+            background: white;
+            border-radius: 28px;
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            backdrop-filter: blur(0px);
+            transition: all 0.2s;
+        }
+
+        /* header */
+        .header {
+            background: #1e293b;
+            color: white;
+            padding: 18px 28px;
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.6rem;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+            background: linear-gradient(135deg, #e0e7ff, #a5f3fc);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        .badge {
+            background: #334155;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        /* two column layout */
+        .main-layout {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+        }
+
+        /* canvas area */
+        .canvas-area {
+            flex: 3;
+            background: #eef2ff;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            min-width: 280px;
+        }
+
+        .canvas-wrapper {
+            background: #fefefe;
+            border-radius: 24px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            position: relative;
+            border: 1px solid #cbd5e1;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            cursor: crosshair;
+            background: #f9fafb;
+            background-image: 
+                linear-gradient(to right, #e2e8f0 1px, transparent 1px),
+                linear-gradient(to bottom, #e2e8f0 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+
+        .canvas-controls {
+            display: flex;
+            gap: 12px;
+            margin-top: 14px;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .zoom-info {
+            background: #f1f5f9;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-family: monospace;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        /* right panel */
+        .tools-panel {
+            flex: 1.2;
+            background: #ffffff;
+            border-left: 1px solid #e2e8f0;
+            padding: 24px 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+            min-width: 260px;
+        }
+
+        .section {
+            background: #f8fafc;
+            border-radius: 20px;
+            padding: 16px 18px;
+            border: 1px solid #e2edf2;
+            transition: 0.1s;
+        }
+
+        .section-title {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #0f172a;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-left: 4px solid #3b82f6;
+            padding-left: 12px;
+        }
+
+        button, .file-label {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            padding: 8px 14px;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button.primary {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        button.primary:hover {
+            background: #2563eb;
+            transform: scale(0.98);
+        }
+
+        button:hover {
+            background: #f1f5f9;
+        }
+
+        .mode-toggle {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            justify-content: center;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+        }
+
+        .mode-btn.active {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+        }
+
+        input, select {
+            border: 1px solid #cbd5e1;
+            border-radius: 32px;
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            width: 100%;
+            background: white;
+            margin-top: 8px;
+        }
+
+        .input-group {
+            margin-top: 12px;
+        }
+
+        .result-card {
+            background: #eef2ff;
+            border-radius: 20px;
+            padding: 12px 16px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .measure-value {
+            font-size: 1.7rem;
+            font-weight: 800;
+            color: #0f172a;
+            word-break: break-word;
+        }
+
+        .error-msg {
+            color: #b91c1c;
+            background: #fee2e2;
+            padding: 8px 12px;
+            border-radius: 60px;
+            font-size: 0.75rem;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        hr {
+            margin: 8px 0;
+            border-color: #e2e8f0;
+        }
+
+        .flex-btns {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+
+        footer {
+            font-size: 0.7rem;
+            text-align: center;
+            padding: 12px;
+            color: #475569;
+            background: #f9f9fb;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        @media (max-width: 780px) {
+            body { padding: 12px; }
+            .tools-panel { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <div class="header">
+        <h1>📐 PyraGen Measure</h1>
+        <div class="badge">Scale & measure | mm/cm/m</div>
+    </div>
+    <div class="main-layout">
+        <!-- Canvas Section -->
+        <div class="canvas-area">
+            <div class="canvas-wrapper">
+                <canvas id="planCanvas" width="900" height="550" style="width:100%; height:auto; cursor:grab"></canvas>
+            </div>
+            <div class="canvas-controls">
+                <div class="zoom-info">
+                    🔍 Zoom: <span id="zoomPercent">100</span>% &nbsp;| 🖱️ Drag to pan
+                </div>
+                <div class="flex-btns">
+                    <button id="resetViewBtn" title="Reset zoom & pan">⟳ Reset view</button>
+                    <button id="clearPointsBtn" title="Clear points in current mode">🗑 Clear points</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="tools-panel">
+            <!-- Upload -->
+            <div class="section">
+                <div class="section-title">📂 Upload Plan</div>
+                <input type="file" id="fileInput" accept="image/jpeg,image/png" style="margin-bottom: 8px;">
+                <div id="dragZone" style="border:2px dashed #cbd5e1; border-radius: 20px; padding: 10px; text-align:center; margin-top: 8px; background:#fafcff;">
+                    📎 Drag & drop JPG/PNG (max 10MB)
+                </div>
+                <div id="uploadError" class="error-msg" style="display:none;"></div>
+            </div>
+
+            <!-- Mode Toggle -->
+            <div class="section">
+                <div class="section-title">🎛️ Mode</div>
+                <div class="mode-toggle">
+                    <button id="scaleModeBtn" class="mode-btn active">📏 Set Scale Mode</button>
+                    <button id="measureModeBtn" class="mode-btn">📐 Measure Mode</button>
+                </div>
+                <div id="modeHint" style="font-size: 0.75rem; color: #475569; margin-top: 8px;">
+                    ⚡ Scale Mode: click 2 points → enter real distance → set scale
+                </div>
+            </div>
+
+            <!-- Scale Definition -->
+            <div class="section">
+                <div class="section-title">⚖️ Define Scale</div>
+                <div id="scalePointsStatus">📍 Points selected: <span id="scalePointsCount">0</span>/2</div>
+                <div id="pixelDistanceDisplay" style="font-size:0.8rem; margin:5px 0">📏 Pixel distance: —</div>
+                <div class="input-group">
+                    <label>📏 Real-world length (mm)</label>
+                    <input type="number" id="realDistInput" placeholder="e.g., 5000" step="any">
+                </div>
+                <button id="setScaleBtn" class="primary" style="width:100%; margin-top: 12px;">✅ Set Scale</button>
+                <div id="scaleFactorDisplay" style="margin-top: 12px; background:#e9ecef; border-radius: 40px; padding: 6px; text-align:center; font-size:0.75rem; font-family:monospace;">
+                    Scale factor: not set
+                </div>
+            </div>
+
+            <!-- Measurement & Unit -->
+            <div class="section">
+                <div class="section-title">📏 Measure Distance</div>
+                <div>🎯 Unit:</div>
+                <select id="unitSelect">
+                    <option value="mm">Millimeters (mm)</option>
+                    <option value="cm">Centimeters (cm)</option>
+                    <option value="m">Meters (m)</option>
+                </select>
+                <div class="result-card" style="margin-top: 14px;">
+                    <div style="font-size:0.75rem; opacity:0.7;">Last measured distance</div>
+                    <div id="measureResult" class="measure-value">—</div>
+                </div>
+                <div id="measureHint" style="font-size:0.7rem; margin-top: 8px;">💡 In Measure Mode, click any two points on the plan</div>
+            </div>
+            <div class="flex-btns" style="justify-content: space-between;">
+                <button id="exportDataBtn" style="flex:1">📤 Export (JSON)</button>
+                <button id="resetAllBtn" style="flex:1; background:#fee2e2;">🔄 Reset all</button>
+            </div>
+        </div>
+    </div>
+    <footer>✔ Click two points on canvas | Zoom: scroll / drag to pan | Scale accuracy within 2% when set correctly</footer>
+</div>
+
+<script>
+    (function(){
+        // ---------- DOM elements ----------
+        const canvas = document.getElementById('planCanvas');
+        const ctx = canvas.getContext('2d');
+        const fileInput = document.getElementById('fileInput');
+        const dragZone = document.getElementById('dragZone');
+        const uploadErrorDiv = document.getElementById('uploadError');
+        const scaleModeBtn = document.getElementById('scaleModeBtn');
+        const measureModeBtn = document.getElementById('measureModeBtn');
+        const setScaleBtn = document.getElementById('setScaleBtn');
+        const realDistInput = document.getElementById('realDistInput');
+        const scaleFactorSpan = document.getElementById('scaleFactorDisplay');
+        const unitSelect = document.getElementById('unitSelect');
+        const measureResultSpan = document.getElementById('measureResult');
+        const resetViewBtn = document.getElementById('resetViewBtn');
+        const clearPointsBtn = document.getElementById('clearPointsBtn');
+        const resetAllBtn = document.getElementById('resetAllBtn');
+        const scalePointsCountSpan = document.getElementById('scalePointsCount');
+        const pixelDistanceSpan = document.getElementById('pixelDistanceDisplay');
+        const modeHint = document.getElementById('modeHint');
+        const zoomPercentSpan = document.getElementById('zoomPercent');
+        const exportDataBtn = document.getElementById('exportDataBtn');
+
+        // ---------- global state ----------
+        let img = null;               // HTMLImageElement
+        let imgNaturalW = 0, imgNaturalH = 0;
+        let isImageLoaded = false;
+
+        // Base transform (fit image inside canvas, preserve aspect)
+        let baseScale = 1;
+        let baseOffsetX = 0, baseOffsetY = 0;
+
+        // View transform (pan & zoom)
+        let viewZoom = 1.0;
+        let viewPanX = 0, viewPanY = 0;
+
+        // Interaction flags
+        let isPanning = false;
+        let panStartX = 0, panStartY = 0;
+        let lastPanX = 0, lastPanY = 0;
+
+        // Mode: 'scale' or 'measure'
+        let currentMode = 'scale';   // scale mode active
+        
+        // Points for each mode
+        let scalePoints = [];      // array of {x, y} in IMAGE coordinates (pixels)
+        let measurePoints = [];    // array of {x, y} in IMAGE coordinates
+        
+        // scale factor (mm per image pixel)
+        let scaleFactor = null;    // real mm / pixel distance
+        
+        // last measured distance in mm (raw)
+        let lastMeasuredMM = null;
+        
+        // helpers
+        function showError(msg, targetDiv = uploadErrorDiv) {
+            targetDiv.innerText = msg;
+            targetDiv.style.display = 'block';
+            setTimeout(() => { targetDiv.style.display = 'none'; }, 3000);
+        }
+        
+        // Update base transform from canvas size and image dimensions
+        function updateBaseTransform() {
+            if (!isImageLoaded) return;
+            const canvasRect = canvas.getBoundingClientRect();
+            const canvasW = canvasRect.width;
+            const canvasH = canvasRect.height;
+            if (canvasW === 0 || canvasH === 0) return;
+            const imgW = imgNaturalW, imgH = imgNaturalH;
+            const scaleW = canvasW / imgW;
+            const scaleH = canvasH / imgH;
+            baseScale = Math.min(scaleW, scaleH);
+            baseOffsetX = (canvasW - imgW * baseScale) / 2;
+            baseOffsetY = (canvasH - imgH * baseScale) / 2;
+        }
+        
+        // convert image coordinate (imgX, imgY) -> screen coordinate (canvas pixel)
+        function imageToScreen(imgX, imgY) {
+            // step1: base transformation
+            let baseX = imgX * baseScale + baseOffsetX;
+            let baseY = imgY * baseScale + baseOffsetY;
+            // step2: view transformation (zoom + pan)
+            let screenX = baseX * viewZoom + viewPanX;
+            let screenY = baseY * viewZoom + viewPanY;
+            return { x: screenX, y: screenY };
+        }
+        
+        // screen (canvas client coordinates) -> image coordinates
+        function screenToImage(clientX, clientY) {
+            if (!isImageLoaded) return null;
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = clientX - rect.left;
+            const canvasY = clientY - rect.top;
+            // inverse view: (canvasX - viewPanX)/viewZoom  => base coords
+            const baseX = (canvasX - viewPanX) / viewZoom;
+            const baseY = (canvasY - viewPanY) / viewZoom;
+            // inverse base: (baseX - baseOffsetX)/baseScale
+            const imgX = (baseX - baseOffsetX) / baseScale;
+            const imgY = (baseY - baseOffsetY) / baseScale;
+            if (imgX >= 0 && imgX <= imgNaturalW && imgY >= 0 && imgY <= imgNaturalH) {
+                return { x: imgX, y: imgY };
+            }
+            // clamp to image bounds if slightly out (still allow clicks near edges)
+            return { x: Math.min(Math.max(0, imgX), imgNaturalW), y: Math.min(Math.max(0, imgY), imgNaturalH) };
+        }
+        
+        // compute pixel distance between two image points
+        function pixelDistance(p1, p2) {
+            const dx = p1.x - p2.x;
+            const dy = p1.y - p2.y;
+            return Math.sqrt(dx*dx + dy*dy);
+        }
+        
+        // draw everything: image, points, lines, labels
+        function redrawCanvas() {
+            if (!ctx) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // set canvas resolution to match CSS for crisp rendering
+            const rect = canvas.getBoundingClientRect();
+            if (canvas.width !== rect.width) {
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+                updateBaseTransform();
+            }
+            if (!isImageLoaded) {
+                ctx.fillStyle = "#eef2ff";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#475569";
+                ctx.font = "14px system-ui";
+                ctx.fillText("⬆ Upload a floor plan (JPG/PNG)", canvas.width/2-150, canvas.height/2);
+                return;
+            }
+            
+            // draw image using combined transforms
+            ctx.save();
+            ctx.setTransform(1,0,0,1,0,0);
+            // apply view transform first? Actually we draw image by mapping each pixel but more efficient: use transform
+            // Approach: we can draw image using identity and then apply transform? 
+            // We'll manually draw using image transformation: screen = (img*baseScale+baseOffset)*viewZoom + pan
+            // Instead of complex loops, we use ctx transform:
+            // M = translate(pan) scale(zoom) translate(offset) scale(base)
+            ctx.translate(viewPanX, viewPanY);
+            ctx.scale(viewZoom, viewZoom);
+            ctx.translate(baseOffsetX, baseOffsetY);
+            ctx.scale(baseScale, baseScale);
+            ctx.drawImage(img, 0, 0, imgNaturalW, imgNaturalH);
+            ctx.restore();
+            
+            // draw markers & lines for current mode
+            if (currentMode === 'scale') {
+                drawPointsAndLine(scalePoints, '#ef4444', '#dc2626', 'px', true);
+            } else {
+                drawPointsAndLine(measurePoints, '#3b82f6', '#2563eb', 'real', false);
+            }
+            
+            // additional info: if scale mode show pixel distance
+            if (currentMode === 'scale' && scalePoints.length === 2) {
+                const distPx = pixelDistance(scalePoints[0], scalePoints[1]);
+                pixelDistanceSpan.innerText = `📏 Pixel distance: ${distPx.toFixed(2)} px`;
+            } else if (currentMode !== 'scale') {
+                pixelDistanceSpan.innerText = `📏 Pixel distance: —`;
+            }
+        }
+        
+        function drawPointsAndLine(pointsArray, pointColor, lineColor, displayType, showPixelLabel) {
+            if (!pointsArray || pointsArray.length === 0) return;
+            for (let i=0; i<pointsArray.length; i++) {
+                const p = pointsArray[i];
+                const screen = imageToScreen(p.x, p.y);
+                ctx.beginPath();
+                ctx.arc(screen.x, screen.y, 6, 0, 2*Math.PI);
+                ctx.fillStyle = pointColor;
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.fillStyle = '#1e293b';
+                ctx.font = "bold 12px 'Segoe UI'";
+                ctx.shadowBlur = 0;
+                ctx.fillText(`${i+1}`, screen.x-4, screen.y-4);
+            }
+            if (pointsArray.length === 2) {
+                const p1 = pointsArray[0], p2 = pointsArray[1];
+                const screen1 = imageToScreen(p1.x, p1.y);
+                const screen2 = imageToScreen(p2.x, p2.y);
+                ctx.beginPath();
+                ctx.moveTo(screen1.x, screen1.y);
+                ctx.lineTo(screen2.x, screen2.y);
+                ctx.strokeStyle = lineColor;
+                ctx.lineWidth = 2.5;
+                ctx.setLineDash([6, 8]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                const midX = (screen1.x + screen2.x)/2;
+                const midY = (screen1.y + screen2.y)/2 - 12;
+                let labelText = "";
+                const distPx = pixelDistance(p1, p2);
+                if (displayType === 'px') {
+                    labelText = `${distPx.toFixed(1)} px`;
+                } else {
+                    if (scaleFactor !== null && currentMode === 'measure') {
+                        const realMM = distPx * scaleFactor;
+                        lastMeasuredMM = realMM;
+                        const unit = unitSelect.value;
+                        let converted = realMM;
+                        let unitSym = 'mm';
+                        if (unit === 'cm') { converted = realMM / 10; unitSym = 'cm'; }
+                        if (unit === 'm') { converted = realMM / 1000; unitSym = 'm'; }
+                        labelText = `${converted.toFixed(2)} ${unitSym}`;
+                        measureResultSpan.innerText = `${converted.toFixed(2)} ${unitSym}`;
+                    } else if (currentMode === 'measure' && scaleFactor === null) {
+                        labelText = `⚠️ Set scale first`;
+                        measureResultSpan.innerText = `Scale missing`;
+                    } else {
+                        labelText = `${distPx.toFixed(1)} px`;
+                    }
+                }
+                if (displayType === 'px' && currentMode === 'scale') {
+                    labelText = `${distPx.toFixed(1)} px`;
+                }
+                if (currentMode === 'measure' && scaleFactor !== null && displayType !== 'px') {
+                    // already handled
+                } else if (currentMode === 'measure' && scaleFactor === null && displayType !== 'px') {
+                    labelText = `❗ No scale`;
+                }
+                ctx.font = "500 13px 'Inter'";
+                ctx.fillStyle = "#0f172a";
+                ctx.shadowBlur = 0;
+                ctx.fillText(labelText, midX, midY);
+            }
+        }
+        
+        // handle clicks for points depending on mode
+        function handleCanvasClick(e) {
+            if (!isImageLoaded) {
+                showError("Please upload a floor plan first.", uploadErrorDiv);
+                return;
+            }
+            const imgCoord = screenToImage(e.clientX, e.clientY);
+            if (!imgCoord) return;
+            
+            if (currentMode === 'scale') {
+                // scale mode: max 2 points
+                if (scalePoints.length >= 2) {
+                    scalePoints = [];
+                }
+                scalePoints.push({ x: imgCoord.x, y: imgCoord.y });
+                if (scalePoints.length === 2) {
+                    // update pixel distance display
+                    const pxDist = pixelDistance(scalePoints[0], scalePoints[1]);
+                    if (pxDist < 5) {
+                        showError("⚠️ Points are too close (<5px). Please select two distinct points.", uploadErrorDiv);
+                        scalePoints.pop(); // remove last point
+                    }
+                }
+                updateScalePointsUI();
+                redrawCanvas();
+            } 
+            else if (currentMode === 'measure') {
+                if (scaleFactor === null) {
+                    showError("⚠️ No scale defined! Please set scale first in Scale Mode.", uploadErrorDiv);
+                    return;
+                }
+                // measure mode: each new pair replaces previous measurement
+                if (measurePoints.length >= 2) {
+                    measurePoints = [];
+                }
+                measurePoints.push({ x: imgCoord.x, y: imgCoord.y });
+                if (measurePoints.length === 2) {
+                    const pxDist = pixelDistance(measurePoints[0], measurePoints[1]);
+                    const realMM = pxDist * scaleFactor;
+                    lastMeasuredMM = realMM;
+                    const unit = unitSelect.value;
+                    let converted = realMM;
+                    let unitSym = 'mm';
+                    if (unit === 'cm') { converted = realMM / 10; unitSym = 'cm'; }
+                    if (unit === 'm') { converted = realMM / 1000; unitSym = 'm'; }
+                    measureResultSpan.innerText = `${converted.toFixed(2)} ${unitSym}`;
+                } else {
+                    measureResultSpan.innerText = `—`;
+                }
+                redrawCanvas();
+            }
+        }
+        
+        function updateScalePointsUI() {
+            scalePointsCountSpan.innerText = scalePoints.length;
+            if (scalePoints.length === 2) {
+                const pxDist = pixelDistance(scalePoints[0], scalePoints[1]);
+                pixelDistanceSpan.innerText = `📏 Pixel distance: ${pxDist.toFixed(2)} px`;
+            } else {
+                pixelDistanceSpan.innerText = `📏 Pixel distance: —`;
+            }
+        }
+        
+        // set scale from selected points
+        function setScaleFromPoints() {
+            if (currentMode !== 'scale') {
+                showError("Switch to Scale Mode to define scale.", uploadErrorDiv);
+                return;
+            }
+            if (scalePoints.length !== 2) {
+                showError("Select exactly 2 points on the canvas first.", uploadErrorDiv);
+                return;
+            }
+            const realDistVal = parseFloat(realDistInput.value);
+            if (isNaN(realDistVal) || realDistVal <= 0) {
+                showError("Enter a valid positive real distance (mm).", uploadErrorDiv);
+                return;
+            }
+            const pxDist = pixelDistance(scalePoints[0], scalePoints[1]);
+            if (pxDist < 5) {
+                showError("Points too close (<5px) for reliable scale.", uploadErrorDiv);
+                return;
+            }
+            scaleFactor = realDistVal / pxDist;
+            scaleFactorSpan.innerHTML = `Scale factor: ${scaleFactor.toFixed(4)} mm/pixel ✅`;
+            // clear scale points after setting scale? keep visual but reset for next scale possibility?
+            scalePoints = [];
+            updateScalePointsUI();
+            redrawCanvas();
+            showError(`Scale set! 1 pixel = ${scaleFactor.toFixed(3)} mm`, uploadErrorDiv);
+            // auto-switch hint
+            modeHint.innerText = "✅ Scale ready! Switch to Measure Mode to measure distances.";
+        }
+        
+        // reset everything
+        function resetAll() {
+            img = null;
+            isImageLoaded = false;
+            scaleFactor = null;
+            scalePoints = [];
+            measurePoints = [];
+            scaleFactorSpan.innerHTML = `Scale factor: not set`;
+            measureResultSpan.innerText = `—`;
+            realDistInput.value = '';
+            viewZoom = 1.0;
+            viewPanX = 0; viewPanY = 0;
+            lastMeasuredMM = null;
+            updateScalePointsUI();
+            pixelDistanceSpan.innerText = `📏 Pixel distance: —`;
+            if (canvas) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                redrawCanvas();
+            }
+            fileInput.value = '';
+            uploadErrorDiv.style.display = 'none';
+        }
+        
+        // load image from file
+        function loadImageFromFile(file) {
+            if (!file) return;
+            if (!file.type.match('image/jpeg') && !file.type.match('image/png')) {
+                showError("Unsupported format. Use JPG or PNG.");
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) {
+                showError("File exceeds 10MB limit.");
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const imgElem = new Image();
+                imgElem.onload = () => {
+                    img = imgElem;
+                    imgNaturalW = img.width;
+                    imgNaturalH = img.height;
+                    isImageLoaded = true;
+                    // reset transforms
+                    viewZoom = 1.0;
+                    viewPanX = 0; viewPanY = 0;
+                    updateBaseTransform();
+                    scalePoints = [];
+                    measurePoints = [];
+                    scaleFactor = null;
+                    scaleFactorSpan.innerHTML = `Scale factor: not set`;
+                    measureResultSpan.innerText = `—`;
+                    updateScalePointsUI();
+                    redrawCanvas();
+                };
+                imgElem.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // zoom handler (wheel)
+        function onWheel(e) {
+            if (!isImageLoaded) return;
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            const newZoom = Math.min(8, Math.max(0.2, viewZoom * delta));
+            if (newZoom === viewZoom) return;
+            // zoom towards mouse
+            const factor = newZoom / viewZoom;
+            viewPanX = mouseX - (mouseX - viewPanX) * factor;
+            viewPanY = mouseY - (mouseY - viewPanY) * factor;
+            viewZoom = newZoom;
+            updateZoomDisplay();
+            redrawCanvas();
+        }
+        
+        function updateZoomDisplay() {
+            zoomPercentSpan.innerText = Math.round(viewZoom * 100);
+        }
+        
+        // Panning
+        function onMouseDown(e) {
+            if (!isImageLoaded) return;
+            isPanning = true;
+            panStartX = e.clientX;
+            panStartY = e.clientY;
+            lastPanX = viewPanX;
+            lastPanY = viewPanY;
+            canvas.style.cursor = 'grabbing';
+            e.preventDefault();
+        }
+        function onMouseMove(e) {
+            if (!isPanning || !isImageLoaded) return;
+            const dx = e.clientX - panStartX;
+            const dy = e.clientY - panStartY;
+            viewPanX = lastPanX + dx;
+            viewPanY = lastPanY + dy;
+            redrawCanvas();
+        }
+        function onMouseUp() {
+            isPanning = false;
+            canvas.style.cursor = 'crosshair';
+        }
+        
+        function resetView() {
+            viewZoom = 1.0;
+            viewPanX = 0; viewPanY = 0;
+            updateZoomDisplay();
+            redrawCanvas();
+        }
+        
+        function clearPointsCurrentMode() {
+            if (currentMode === 'scale') {
+                scalePoints = [];
+                updateScalePointsUI();
+                pixelDistanceSpan.innerText = `📏 Pixel distance: —`;
+            } else {
+                measurePoints = [];
+                measureResultSpan.innerText = `—`;
+            }
+            redrawCanvas();
+        }
+        
+        function switchMode(mode) {
+            currentMode = mode;
+            if (mode === 'scale') {
+                scaleModeBtn.classList.add('active');
+                measureModeBtn.classList.remove('active');
+                modeHint.innerText = "⚡ Scale Mode: click 2 points → enter real distance → set scale";
+                // clear measure points for clarity
+                measurePoints = [];
+                measureResultSpan.innerText = `—`;
+            } else {
+                measureModeBtn.classList.add('active');
+                scaleModeBtn.classList.remove('active');
+                modeHint.innerText = "📐 Measure Mode: click any 2 points to get real distance (scale needed)";
+                scalePoints = [];
+                updateScalePointsUI();
+                pixelDistanceSpan.innerText = `📏 Pixel distance: —`;
+            }
+            redrawCanvas();
+        }
+        
+        function exportData() {
+            if (!isImageLoaded) {
+                showError("No image loaded.", uploadErrorDiv);
+                return;
+            }
+            const exportObj = {
+                scaleFactor: scaleFactor,
+                lastMeasuredMM: lastMeasuredMM,
+                imageDimensions: { width: imgNaturalW, height: imgNaturalH },
+                unit: unitSelect.value,
+                timestamp: new Date().toISOString()
+            };
+            const dataStr = JSON.stringify(exportObj, null, 2);
+            const blob = new Blob([dataStr], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "pyragen_measurement.json";
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // event listeners
+        canvas.addEventListener('click', handleCanvasClick);
+        canvas.addEventListener('wheel', onWheel, { passive: false });
+        canvas.addEventListener('mousedown', onMouseDown);
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+        setScaleBtn.addEventListener('click', setScaleFromPoints);
+        resetViewBtn.addEventListener('click', resetView);
+        clearPointsBtn.addEventListener('click', clearPointsCurrentMode);
+        resetAllBtn.addEventListener('click', resetAll);
+        scaleModeBtn.addEventListener('click', () => switchMode('scale'));
+        measureModeBtn.addEventListener('click', () => switchMode('measure'));
+        exportDataBtn.addEventListener('click', exportData);
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) loadImageFromFile(e.target.files[0]);
+        });
+        
+        // drag & drop
+        dragZone.addEventListener('dragover', (e) => { e.preventDefault(); dragZone.style.background = "#e0f2fe"; });
+        dragZone.addEventListener('dragleave', () => { dragZone.style.background = "#fafcff"; });
+        dragZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragZone.style.background = "#fafcff";
+            const file = e.dataTransfer.files[0];
+            if (file) loadImageFromFile(file);
+        });
+        
+        // initial draw
+        redrawCanvas();
+        updateZoomDisplay();
+        window.addEventListener('resize', () => {
+            if (isImageLoaded) {
+                updateBaseTransform();
+                redrawCanvas();
+            }
+        });
+    })();
+</script>
+</body>
+</html>
