@@ -11,7 +11,7 @@ app = Flask(__name__)
 CORS(app)  # Allow frontend to call this API
 
 # Load a pre-trained model (you can replace with a custom one)
-model = YOLO('yolov8n.pt')  # nano model, fast but not floor-plan specific
+model = YOLO('best.pt')   # instead of 'yolov8n.pt'
 
 @app.route('/detect', methods=['POST'])
 def detect_objects():
